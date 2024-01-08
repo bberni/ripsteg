@@ -154,11 +154,11 @@ Do you want to continue? (Y/N) "#, chunk.chunk_name, offset - chunk.data.len() -
 }
 
 
-pub fn process_png(filename: String) -> Result<String> {
+pub fn process_png(filename: String) -> Result<()> {
     let mut f = File::open(filename)?;
     let mut buf: Vec<u8> = Vec::new();
     f.read_to_end(&mut buf)?;
     let png: Png = Png::parse(buf)?;
-    println!("{:?}", png);
-    Ok("Ok".to_string())
+    println!("[+] PNG parsed successfully:\n    {:?}", png.ihdr);
+    Ok(())
 }
