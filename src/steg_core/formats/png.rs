@@ -9,9 +9,13 @@ const VALID_PNG_SIGNATURE: [u8; 8] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 
 
 #[derive(Error, Debug)]
 pub enum PngError {
-    #[error("[-] PNG signature error")]
+    #[error("[-] PNG signature error.")]
     SigError(),
-
+    #[error(r#"[-] Chunk length error at offset: {1}
+    Chunk length (0x{0:08X}) is bigger than the remaining image size, which is impossible.
+    Check if the length is at correct offset.
+    If it is, correct the length of the chunk and try again."#)]
+    ChunkLengthError(u32, usize),
     #[error(r#"[-] Wrong chunk name: {0} at offset {1}
     {0} is not a valid PNG chunk name. This means that either:
         a) The length of the previous chunk is corrupted
@@ -21,13 +25,13 @@ pub enum PngError {
     ChunkNameError(String, usize),
 
     #[error(r#"[-] IHDR chunk length invalid: {0}
-    Size of the IHDR length must be exactly 13 bytes
-    Please correct the length of the IHDR header and try again"#)]
+    Size of the IHDR length must be exactly 13 bytes.
+    Please correct the length of the IHDR header and try again."#)]
     IHDRLengthError(usize),
-    #[error("[-] No IHDR present, cannot properly parse the image")]
+    #[error("[-] No IHDR present, cannot properly parse the image.")]
     NoIHDRError(),
 
-    #[error("[-] CRC32 mismatch of chunk {0} at offset {1}, aborting")]
+    #[error("[-] CRC32 mismatch of chunk {0} at offset {1}, aborting.")]
     CRC32Error(String, usize)
 
 }
@@ -77,13 +81,14 @@ impl Png {
         if correct_crc == chunk.crc32 {
             return Ok(());
         } else {
-            println!(r#"[!] Incorrect CRC32 checksum of {} chunk: {} (should be {})
-            Do you want to continue? (Y/N)"#, chunk.chunk_name, chunk.crc32, correct_crc);
-            if !(yes_no()?) {return Err(PngError::CRC32Error(chunk.chunk_name.clone(), offset).into())} else {return Ok(())};
+            println!(r#"[!] Incorrect CRC32 checksum of {} chunk at offset {}: 0x{:08X} (should be 0x{:08X})
+Do you want to continue? (Y/N) "#, chunk.chunk_name, offset - chunk.data.len() - 8, chunk.crc32, correct_crc);
+            if !(yes_no()?) {return Err(PngError::CRC32Error(chunk.chunk_name.clone(), offset - chunk.data.len() - 8).into())} else {return Ok(())};
         }
     }
 
     pub fn parse(buffer: Vec<u8>) -> Result<Png> {
+
         let mut ihdr: Option<IHDR> = None;
         let mut idat_vec: Vec<Vec<u8>> = Vec::new();
         let mut all_chunks: Vec<Chunk> = Vec::new();
@@ -96,9 +101,16 @@ impl Png {
         while cursor + 12 <= buffer.len() {
             let length_bytes = &buffer[cursor..cursor + 4];
             let length = u32::from_be_bytes(length_bytes.try_into().unwrap());
+            match (length as usize) > (buffer.len() - cursor) {
+                true => return Err(PngError::ChunkLengthError(length, cursor).into()),
+                false => (),
+            }
             cursor += 4;
             let name_bytes= &buffer[cursor..cursor + 4];
             let chunk_name = String::from_utf8_lossy(name_bytes).into_owned();
+            if !(VALID_CHUNK_NAMES.contains(&chunk_name.as_str())) {
+                return Err(PngError::ChunkNameError(chunk_name, cursor).into());
+            } 
             cursor += 4;
             let data_bytes = &buffer[cursor..cursor + length as usize];
             let data: Vec<u8> = Vec::from(data_bytes.to_vec());
@@ -106,9 +118,6 @@ impl Png {
             let crc_bytes = &buffer[cursor..cursor + 4];
             cursor += 4;
             let crc32 = u32::from_be_bytes(crc_bytes.try_into().unwrap());
-            if !(VALID_CHUNK_NAMES.contains(&chunk_name.as_str())) {
-                return Err(PngError::ChunkNameError(chunk_name, cursor).into());
-            } 
             match chunk_name.as_str() {
                 "IHDR" => {
                     let ihdr_chunk = Chunk {chunk_name, data, crc32};
