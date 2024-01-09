@@ -9,4 +9,5 @@ edition = "2021"
 anyhow = "1.0.79"
 clap = { version = "4.4.13", features = ["derive"] }
 crc32fast = "1.3.2"
+miniz_oxide = "0.7.1"
 thiserror = "1.0.56"

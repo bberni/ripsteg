@@ -1,6 +1,6 @@
 use clap::Parser;
 use ripsteg::steg_core;
-use std::{process::exit, time};
+use std::{process::exit, time, fs::create_dir};
 #[derive(Parser)]
 #[command(name = "ripsteg")]
 #[command(author = "Michał Bernacki <michalb675@gmail.com>")]
@@ -16,8 +16,9 @@ struct Cli {
 fn main() {
     let t1 = time::Instant::now(); 
     let args = Cli::parse();
+    create_dir("ripsteg_out").unwrap();
     match args.file_format.as_str() {
-        "png" => match steg_core::formats::png::process_png(args.input_file) {
+        "png" => match steg_core::formats::png::process::process_png(args.input_file) {
             Ok(_) => println!("[+] Done! Time: {:?}", t1.elapsed()),
             Err(why) => {
                 println!("{}", why);
