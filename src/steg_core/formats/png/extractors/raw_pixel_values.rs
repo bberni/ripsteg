@@ -6,7 +6,7 @@ use crate::{
     yes_no,
 };
 use anyhow::Result;
-use std::cmp::{Ordering, self};
+
 
 fn calculate_bpp(ihdr: &IHDR) -> Result<u8> {
     let channels = match ihdr.color_type {
@@ -21,30 +21,79 @@ fn calculate_bpp(ihdr: &IHDR) -> Result<u8> {
     return Ok((channels * ihdr.bit_depth) % 8);
 }
 
+fn paeth_predictor(a: i32, b: i32, c: i32) -> Result<u8> {
+
+    let p = a + b - c;        
+    let pa = (p - a).abs();      
+    let pb = (p - b).abs();
+    let pc = (p - c).abs();
+    if pa <= pb && pa <= pc {
+        return Ok(a.try_into()?);
+    }
+    else if pb <= pc {
+        return Ok(b.try_into()?);
+    }
+    else {return Ok(c.try_into()?);}
+}
+
 fn none_filter(scanline: &[u8]) -> &[u8] {
-    return &scanline[1..];
+    return &scanline[..];
+}
+
+fn sub_filter(scanline: &[u8], ihdr: &IHDR, bpp: &u8) -> Result<Vec<u8>> {
+    let mut unfiltered: Vec<u8> = Vec::new();
+    for x in 0..scanline.len() {
+        match x as isize - *bpp as isize {
+            result if result >= 0 => {unfiltered.push(scanline[x].wrapping_add(scanline[result as usize]));},
+            _ => {unfiltered.push(scanline[x]);}
+        };
+    }
+    return Ok(unfiltered)
 }
 
 fn up_filter(prev_scanline: &[u8], scanline: &[u8]) -> Vec<u8> {
     let mut unfiltered: Vec<u8> = Vec::new();
-    for x in 1..scanline.len() {
-        unfiltered.push((scanline[x] + prev_scanline[x]) % 255);
+    for x in 0..scanline.len() {
+        unfiltered.push(scanline[x].wrapping_add(prev_scanline[x]));
     }
 
     return unfiltered;
 }
 
-fn sub_filter(scanline: &[u8], ihdr: &IHDR) -> Result<Vec<u8>> {
-    let bpp = calculate_bpp(ihdr)?;
+fn average_filter(prev_scanline: &[u8], scanline: &[u8], bpp: &u8) -> Vec<u8> {
     let mut unfiltered: Vec<u8> = Vec::new();
-    for x in 1..scanline.len() {
-        let predictor = match x as isize - bpp as isize {
-            result if result >= 0 => result,
-            _ => 0,
+    for x in 0..scanline.len() {
+        match x as isize - *bpp as isize {
+            result if result >= 0 => {
+                unfiltered.push(scanline[x].wrapping_add((((scanline[result as usize] + prev_scanline[x]) as f64) / 2.0) as u8));
+            },
+            _ => {
+                unfiltered.push(scanline[x].wrapping_add((((0 + prev_scanline[x]) as f64) / 2.0) as u8));
+            }
         };
-        unfiltered.push(scanline[x] + scanline[predictor as usize]);
     }
-    return Ok(unfiltered)
+    return unfiltered;
+}
+
+fn paeth_filter(prev_scanline: &[u8], scanline: &[u8], bpp: &u8) -> Result<Vec<u8>> {
+    let mut unfiltered: Vec<u8> = Vec::new();
+    for x in 0..scanline.len() {
+        match x as isize - *bpp as isize {
+            result if result >= 0 => {
+                let a = scanline[result as usize] as i32;
+                let b = prev_scanline[x as usize] as i32;
+                let c = prev_scanline[result as usize] as i32;
+                unfiltered.push(scanline[x].wrapping_add(scanline[x] + paeth_predictor(a, b, c)?))
+            },
+            _ => {
+                let a = 0;
+                let b = prev_scanline[x as usize] as i32;
+                let c = 0;
+                unfiltered.push(scanline[x].wrapping_add(scanline[x] + paeth_predictor(a, b, c)?))
+            }
+        }
+    }
+    return Ok(unfiltered);
 }
 
 pub fn raw_pixel_values(png: Png) -> Result<Vec<u8>> {
