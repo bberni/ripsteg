@@ -1,9 +1,12 @@
-use crate::steg_core::formats::png::{
-    errors::{DumpError, GenericError},
-    parser::{Png, IHDR},
+use crate::{
+    steg_core::formats::png::{
+        errors::{DumpError, GenericError},
+        parser::{Png, IHDR},
+    },
+    yes_no,
 };
-use crate::yes_no;
 use anyhow::Result;
+use std::cmp::{Ordering, self};
 
 fn calculate_bpp(ihdr: &IHDR) -> Result<u8> {
     let channels = match ihdr.color_type {
@@ -11,9 +14,11 @@ fn calculate_bpp(ihdr: &IHDR) -> Result<u8> {
         2 => 3,
         4 => 2,
         8 => 4,
-        _ => {return Err(DumpError::InvalidBitDepth(ihdr.bit_depth, ihdr.color_type).into());}
+        _ => {
+            return Err(DumpError::InvalidBitDepth(ihdr.bit_depth, ihdr.color_type).into());
+        }
     };
-    return Ok((channels * ihdr.bit_depth) % 8)
+    return Ok((channels * ihdr.bit_depth) % 8);
 }
 
 fn none_filter(scanline: &[u8]) -> &[u8] {
@@ -29,9 +34,17 @@ fn up_filter(prev_scanline: &[u8], scanline: &[u8]) -> Vec<u8> {
     return unfiltered;
 }
 
-fn sub_filter(scanline: &[u8], ihdr: &IHDR) -> Result<Vec<u8>>{
+fn sub_filter(scanline: &[u8], ihdr: &IHDR) -> Result<Vec<u8>> {
     let bpp = calculate_bpp(ihdr)?;
-    todo!()
+    let mut unfiltered: Vec<u8> = Vec::new();
+    for x in 1..scanline.len() {
+        let predictor = match x as isize - bpp as isize {
+            result if result >= 0 => result,
+            _ => 0,
+        };
+        unfiltered.push(scanline[x] + scanline[predictor as usize]);
+    }
+    return Ok(unfiltered)
 }
 
 pub fn raw_pixel_values(png: Png) -> Result<Vec<u8>> {
