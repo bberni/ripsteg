@@ -44,8 +44,15 @@ pub enum DumpError {
 
     #[error(r#"[-] Invalid color type:
     Color type: {0} is not a valid color type.
-    Parser cannot continue without a valid color type"#)]
-    InvalidColorType(u8)
+    Parser cannot continue without a valid color type.
+    For list of all valid color types please visit https://www.w3.org/TR/PNG-Chunks.html"#)]
+    InvalidColorType(u8),
+
+    #[error(r#"[-] Invalid bit depth:
+    Bit depth: {0} found in IDAT header is not valid for color type {0}.
+    Parser cannot continue.
+    For list of all valid bit depths please visit https://www.w3.org/TR/PNG-Chunks.html"#)]
+    InvalidBitDepth(u8, u8)
 }
 
 #[derive(Error, Debug)]
