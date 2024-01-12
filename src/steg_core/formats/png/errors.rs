@@ -54,3 +54,9 @@ pub enum FsError {
     {0}"#)]
     WriteError(Error)
 }
+
+#[derive(Error, Debug)]
+pub enum GenericError {
+    #[error("[-] PNG analysis aborted")]
+    Abort()
+}
