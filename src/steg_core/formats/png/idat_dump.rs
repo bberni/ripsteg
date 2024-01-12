@@ -2,13 +2,12 @@ use std::fs::File;
 use std::io::Write;
 use anyhow::Result;
 use miniz_oxide::inflate;
-use super::consts::*;
+use crate::OUTPUT_DIR;
 use super::errors::{DumpError, FsError};
 
-pub fn idat_dump(idat_vec: Vec<Vec<u8>>) -> Result<Vec<u8>> {
-    let outfile = format!("{}/idat_dump.bin", OUTPUT_DIR);
-    let flattened_idat: Vec<u8> = idat_vec.into_iter().flatten().collect();
-    let decompressed = match inflate::decompress_to_vec_zlib(&flattened_idat) {
+pub fn idat_dump(idat_vec: &Vec<u8>) -> Result<Vec<u8>> {
+    let outfile = format!("{}/idat_dump.bin", OUTPUT_DIR.read().unwrap());
+    let decompressed = match inflate::decompress_to_vec_zlib(idat_vec) {
         Ok(dump) => dump,
         Err(x) => {return Err(DumpError::InflateError(x).into())}
     };

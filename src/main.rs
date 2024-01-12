@@ -1,5 +1,6 @@
 use clap::Parser;
 use ripsteg::steg_core;
+use ripsteg::OUTPUT_DIR;
 use std::{process::exit, time, fs::create_dir};
 #[derive(Parser)]
 #[command(name = "ripsteg")]
@@ -7,16 +8,28 @@ use std::{process::exit, time, fs::create_dir};
 #[command(version = "0.1")]
 #[command(about = "Does awesome things", long_about = None)]
 struct Cli {
-    #[arg(long)]
+    #[arg(action)]
     input_file: String,
-    #[arg(long)]
+    #[arg(action)]
     file_format: String,
+    #[arg(action)]
+    output_folder: String
 }
 
 fn main() {
     let t1 = time::Instant::now(); 
     let args = Cli::parse();
-    create_dir("ripsteg_out").unwrap();
+
+    match create_dir(&args.output_folder) {
+        Ok(_) => {
+            *OUTPUT_DIR.write().unwrap() = args.output_folder;
+        },
+        Err(e) => {
+            println!(r#"[-] Error creating a folder {}:
+    {}"#, args.output_folder, e);
+            exit(1);
+        }
+    }
     match args.file_format.as_str() {
         "png" => match steg_core::formats::png::process::process_png(args.input_file) {
             Ok(_) => println!("[+] Done! Time: {:?}", t1.elapsed()),

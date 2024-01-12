@@ -36,7 +36,16 @@ pub enum PngError {
 pub enum DumpError {
     #[error(r#"[-] IDAT decompression error: 
     {0}"#)]
-    InflateError(DecompressError)
+    InflateError(DecompressError),
+
+    #[error(r#"[-] Color type not implemented:
+    Indexed images can not be parsed as of now."#)]
+    IndexedNotImplemented(),
+
+    #[error(r#"[-] Invalid color type:
+    Color type: {0} is not a valid color type.
+    Parser cannot continue without a valid color type"#)]
+    InvalidColorType(u8)
 }
 
 #[derive(Error, Debug)]

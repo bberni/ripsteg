@@ -10,6 +10,6 @@ pub fn process_png(filename: String) -> Result<()> {
     let mut buf: Vec<u8> = Vec::new();
     f.read_to_end(&mut buf)?;
     let png: Png = Png::parse(buf)?;
-    let dump = idat_dump(png.idat_vec)?;
+    let dump = idat_dump(&png.idat_vec)?;
     Ok(())
 }

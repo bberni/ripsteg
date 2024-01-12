@@ -24,7 +24,7 @@ pub struct Chunk {
 #[derive(Debug)]
 pub struct Png {
     pub ihdr: IHDR,
-    pub idat_vec: Vec<Vec<u8>>,
+    pub idat_vec: Vec<u8>,
     pub all_chunks: Vec<Chunk>
 }
 
@@ -116,6 +116,7 @@ Do you want to continue? (Y/N) "#, chunk.chunk_name, offset - chunk.data.len() -
         match ihdr {
             Some(ihdr) => {
                 println!("[+] PNG parsed successfully:\n    {:?}", ihdr);
+                let idat_vec: Vec<u8> = idat_vec.into_iter().flatten().collect();
                 return Ok(Png {ihdr, idat_vec, all_chunks})
             }
             None => {return Err(PngError::NoIHDRError().into())}
