@@ -25,7 +25,7 @@ pub fn raw_pixel_values(png: Png) -> Result<Vec<u8>> {
             if !(yes_no()?) {return Err(GenericError::Abort().into())};
         }
     }
-    
+    let scanlines: Vec<&[u8]> = idat.as_slice().chunks(width as usize + 1).collect();
 
     todo!()
 }
