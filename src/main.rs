@@ -1,7 +1,7 @@
 use clap::Parser;
 use ripsteg::steg_core;
 use ripsteg::OUTPUT_DIR;
-use std::{process::exit, time, fs::create_dir};
+use std::{process::exit, time, fs::create_dir_all};
 #[derive(Parser)]
 #[command(name = "ripsteg")]
 #[command(author = "Michał Bernacki <michalb675@gmail.com>")]
@@ -20,7 +20,8 @@ fn main() {
     let t1 = time::Instant::now(); 
     let args = Cli::parse();
 
-    match create_dir(&args.output_folder) {
+
+    match create_dir_all(&args.output_folder) {
         Ok(_) => {
             *OUTPUT_DIR.write().unwrap() = args.output_folder;
         },
@@ -38,7 +39,13 @@ fn main() {
                 exit(1);
             }
         },
-        "bmp" => {}
+        "bmp" => match steg_core::formats::bmp::process::process_bmp(args.input_file) {
+            Ok(_) => println!("[+] Done! Time: {:?}", t1.elapsed()),
+            Err(why) => {
+                println!("{}", why);
+                exit(1);
+            }
+        }
         _ => {
             println!("[-] Only png and bmp formats are currently supported");
             exit(1);
