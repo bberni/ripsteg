@@ -1,5 +1,4 @@
 use std::io::Error;
-
 use miniz_oxide::inflate::DecompressError;
 use thiserror::Error;
 
@@ -52,8 +51,14 @@ pub enum DumpError {
     Bit depth: {0} found in IDAT header is not valid for color type {0}.
     Parser cannot continue.
     For list of all valid bit depths please visit https://www.w3.org/TR/PNG-Chunks.html"#)]
-    InvalidBitDepth(u8, u8)
-}
+    InvalidBitDepth(u8, u8),
+
+    #[error("[-] Invalid dimensions")]
+    InvalidDimensions(),
+
+    #[error(r#"[-] Empty IDAT chunk"#)]
+    EmptyIDAT()
+}   
 
 #[derive(Error, Debug)]
 pub enum FsError {

@@ -7,6 +7,7 @@ pub mod steg_core;
 lazy_static! {
     pub static ref OUTPUT_DIR: RwLock<String> = RwLock::new(String::new());
 }
+
 pub fn yes_no() -> Result<bool> {
     let mut user_input = String::new();
     loop {
