@@ -23,99 +23,6 @@ fn calculate_bpp(ihdr: &IHDR) -> Result<u8> {
     return Ok((channels * ihdr.bit_depth) / 8);
 }
 
-fn paeth_predictor(a: i32, b: i32, c: i32) -> Result<u8> {
-
-    let p = a + b - c;        
-    let pa = (p - a).abs();      
-    let pb = (p - b).abs();
-    let pc = (p - c).abs();
-    if pa <= pb && pa <= pc {
-        return Ok(a.try_into()?);
-    }
-    else if pb <= pc {
-        return Ok(b.try_into()?);
-    }
-    else {return Ok(c.try_into()?);}
-}
-
-fn none_filter(scanline: &[u8]) -> Vec<u8> {
-    return scanline.to_vec();
-}
-
-fn sub_filter(scanline: &[u8], bpp: &u8) -> Result<Vec<u8>> {
-    let mut unfiltered: Vec<u8> = Vec::new();
-    for x in 0..scanline.len() {
-        match x as isize - *bpp as isize {
-            result if result >= 0 => {unfiltered.push(scanline[x].wrapping_add(scanline[result as usize]));},
-            _ => {unfiltered.push(scanline[x]);}
-        };
-    }
-    return Ok(unfiltered)
-}
-
-fn up_filter(prev_scanline: &Vec<u8>, scanline: &[u8]) -> Vec<u8> {
-    let mut unfiltered: Vec<u8> = Vec::new();
-    for x in 0..scanline.len() {
-        unfiltered.push(scanline[x].wrapping_add(prev_scanline[x]));
-    }
-
-    return unfiltered;
-}
-
-fn average_filter(prev_scanline: &Vec<u8>, scanline: &[u8], bpp: &u8) -> Vec<u8> {
-    let mut unfiltered: Vec<u8> = Vec::new();
-    for x in 0..scanline.len() {
-        match x as isize - *bpp as isize {
-            result if result >= 0 => {
-                let average_x = scanline[result as usize] as i32;
-                unfiltered.push(scanline[x].wrapping_add((((average_x + prev_scanline[x] as i32) as f64) / 2.0) as u8));
-            },
-            _ => {
-                unfiltered.push(scanline[x].wrapping_add((((0 + prev_scanline[x] as i32) as f64) / 2.0) as u8));
-            }
-        };
-    }
-    return unfiltered;
-}
-
-fn paeth_filter(prev_scanline: &Vec<u8>, scanline: &[u8], bpp: &u8) -> Result<Vec<u8>> {
-    let mut unfiltered: Vec<u8> = Vec::new();
-    for x in 0..scanline.len() {
-        match x as isize - *bpp as isize {
-            result if result >= 0 => {
-                let a = scanline[result as usize] as i32;
-                let b = prev_scanline[x as usize] as i32;
-                let c = prev_scanline[result as usize] as i32;
-                unfiltered.push(scanline[x].wrapping_add(paeth_predictor(a, b, c)?))
-            },
-            _ => {
-                let a = 0;
-                let b = prev_scanline[x as usize] as i32;
-                let c = 0;
-                unfiltered.push(scanline[x].wrapping_add(paeth_predictor(a, b, c)?))
-            }
-        }
-    }
-    return Ok(unfiltered);
-}
-
-// fn chunk_idat_mut(vec: &mut Vec<u8>, chunk_size: usize) -> Vec<(u8, &mut [u8])> {
-//     let mut chunks = Vec::new();
-//     let vec_clone = vec.clone();
-//     let mut start = 0;
-//     while start < vec.len() {
-//         let end = std::cmp::min(start + chunk_size, vec.len());
-//         if end - start > 0 {
-//             let filter_type = vec[start];
-//             let scanline = &mut vec[start + 1..end];  // start from the next byte
-//             chunks.push((filter_type, scanline));
-//         }
-//         start = end;
-//     }
-
-//     return chunks;
-// }
-
 pub fn raw_pixel_values(png: Png, idat_dump: Vec<u8>) -> Result<Vec<u8>> {
     let mut idat = idat_dump;
     println!("{:?}", png.ihdr);
@@ -185,26 +92,7 @@ pub fn raw_pixel_values(png: Png, idat_dump: Vec<u8>) -> Result<Vec<u8>> {
         unfiltered.push(&scanline[1..]);
 
     }
-    //     let filter_type = scanline[0];
-    //     let scanline_no_filter = &scanline[1..];
-    //     // match filter_type {
-    //     //     1 => {println!("sub")}
-    //     //     2 => {println!("up")}
-    //     //     3 => {println!("avg")}
-    //     //     4 => {println!("paeth")}
-    //     //     _ => {}// temp
-    //     // }
-    //     println!("{:?}", bpp);
-    //     let raw_scanline = match filter_type {
-    //         0 => none_filter(scanline_no_filter),
-    //         1 => sub_filter(scanline_no_filter, &bpp)?,
-    //         2 => up_filter(prev_scanline, scanline_no_filter),
-    //         3 => average_filter(prev_scanline, scanline_no_filter, &bpp),
-    //         4 => paeth_filter(prev_scanline, scanline_no_filter, &bpp)?,
-    //         _ => Vec::new() // temp
-    //     };
-    //     raw_pixel_values.push(raw_scanline);
-    // }
+
     let raw_pixel_values = unfiltered.concat();
     let outfile = format!("{}/raw_pixel_values.bin", OUTPUT_DIR.read().unwrap());
     let mut file = File::create(&outfile)?;

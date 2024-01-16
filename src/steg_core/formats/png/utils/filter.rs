@@ -1,4 +1,4 @@
-//The following code is adapted from the crate png - https://github.com/image-rs/image-png/
+//The following code is adapted from the "png" crate - https://github.com/image-rs/image-png/, https://crates.io/crates/png
 // And is distributed with MIT license:
 
 // Copyright (c) 2015 nwin
@@ -82,7 +82,7 @@ impl FilterType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum AdaptiveFilterType {
-    Adaptive,
+    // Adaptive,
     NonAdaptive,
 }
 impl Default for AdaptiveFilterType {
@@ -106,23 +106,7 @@ fn filter_paeth_decode(a: u8, b: u8, c: u8) -> u8 {
     }
     out
 }
-fn filter_paeth(a: u8, b: u8, c: u8) -> u8 {
-    
-    let pa = b.max(c) - c.min(b);
-    let pb = a.max(c) - c.min(a);
-    let pc = if (a < c) == (c < b) {
-        pa.max(pb) - pa.min(pb)
-    } else {
-        255
-    };
-    if pa <= pb && pa <= pc {
-        a
-    } else if pb <= pc {
-        b
-    } else {
-        c
-    }
-}
+
 pub fn unfilter(
     mut filter: FilterType,
     tbpp: &BytesPerPixel,
@@ -514,126 +498,6 @@ pub fn unfilter(
                     }
                 }
             }
-        }
-    }
-}
-fn filter_internal(
-    method: FilterType,
-    bpp: usize,
-    len: usize,
-    previous: &[u8],
-    current: &[u8],
-    output: &mut [u8],
-) -> FilterType {
-    use self::FilterType::*;
-    
-    
-    
-    const CHUNK_SIZE: usize = 32;
-    match method {
-        NoFilter => {
-            output.copy_from_slice(current);
-            NoFilter
-        }
-        Sub => {
-            let mut out_chunks = output[bpp..].chunks_exact_mut(CHUNK_SIZE);
-            let mut cur_chunks = current[bpp..].chunks_exact(CHUNK_SIZE);
-            let mut prev_chunks = current[..len - bpp].chunks_exact(CHUNK_SIZE);
-            for ((out, cur), prev) in (&mut out_chunks).zip(&mut cur_chunks).zip(&mut prev_chunks) {
-                for i in 0..CHUNK_SIZE {
-                    out[i] = cur[i].wrapping_sub(prev[i]);
-                }
-            }
-            for ((out, cur), &prev) in out_chunks
-                .into_remainder()
-                .iter_mut()
-                .zip(cur_chunks.remainder())
-                .zip(prev_chunks.remainder())
-            {
-                *out = cur.wrapping_sub(prev);
-            }
-            output[..bpp].copy_from_slice(&current[..bpp]);
-            Sub
-        }
-        Up => {
-            let mut out_chunks = output.chunks_exact_mut(CHUNK_SIZE);
-            let mut cur_chunks = current.chunks_exact(CHUNK_SIZE);
-            let mut prev_chunks = previous.chunks_exact(CHUNK_SIZE);
-            for ((out, cur), prev) in (&mut out_chunks).zip(&mut cur_chunks).zip(&mut prev_chunks) {
-                for i in 0..CHUNK_SIZE {
-                    out[i] = cur[i].wrapping_sub(prev[i]);
-                }
-            }
-            for ((out, cur), &prev) in out_chunks
-                .into_remainder()
-                .iter_mut()
-                .zip(cur_chunks.remainder())
-                .zip(prev_chunks.remainder())
-            {
-                *out = cur.wrapping_sub(prev);
-            }
-            Up
-        }
-        Avg => {
-            let mut out_chunks = output[bpp..].chunks_exact_mut(CHUNK_SIZE);
-            let mut cur_chunks = current[bpp..].chunks_exact(CHUNK_SIZE);
-            let mut cur_minus_bpp_chunks = current[..len - bpp].chunks_exact(CHUNK_SIZE);
-            let mut prev_chunks = previous[bpp..].chunks_exact(CHUNK_SIZE);
-            for (((out, cur), cur_minus_bpp), prev) in (&mut out_chunks)
-                .zip(&mut cur_chunks)
-                .zip(&mut cur_minus_bpp_chunks)
-                .zip(&mut prev_chunks)
-            {
-                for i in 0..CHUNK_SIZE {    
-                    out[i] = cur[i].wrapping_sub(
-                        (cur_minus_bpp[i] & prev[i]) + ((cur_minus_bpp[i] ^ prev[i]) >> 1),
-                    );
-                }
-            }
-            for (((out, cur), &cur_minus_bpp), &prev) in out_chunks
-                .into_remainder()
-                .iter_mut()
-                .zip(cur_chunks.remainder())
-                .zip(cur_minus_bpp_chunks.remainder())
-                .zip(prev_chunks.remainder())
-            {
-                *out = cur.wrapping_sub((cur_minus_bpp & prev) + ((cur_minus_bpp ^ prev) >> 1));
-            }
-            for i in 0..bpp {
-                output[i] = current[i].wrapping_sub(previous[i] / 2);
-            }
-            Avg
-        }
-        Paeth => {
-            let mut out_chunks = output[bpp..].chunks_exact_mut(CHUNK_SIZE);
-            let mut cur_chunks = current[bpp..].chunks_exact(CHUNK_SIZE);
-            let mut a_chunks = current[..len - bpp].chunks_exact(CHUNK_SIZE);
-            let mut b_chunks = previous[bpp..].chunks_exact(CHUNK_SIZE);
-            let mut c_chunks = previous[..len - bpp].chunks_exact(CHUNK_SIZE);
-            for ((((out, cur), a), b), c) in (&mut out_chunks)
-                .zip(&mut cur_chunks)
-                .zip(&mut a_chunks)
-                .zip(&mut b_chunks)
-                .zip(&mut c_chunks)
-            {
-                for i in 0..CHUNK_SIZE {
-                    out[i] = cur[i].wrapping_sub(filter_paeth(a[i], b[i], c[i]));
-                }
-            }
-            for ((((out, cur), &a), &b), &c) in out_chunks
-                .into_remainder()
-                .iter_mut()
-                .zip(cur_chunks.remainder())
-                .zip(a_chunks.remainder())
-                .zip(b_chunks.remainder())
-                .zip(c_chunks.remainder())
-            {
-                *out = cur.wrapping_sub(filter_paeth(a, b, c));
-            }
-            for i in 0..bpp {
-                output[i] = current[i].wrapping_sub(filter_paeth(0, previous[i], 0));
-            }
-            Paeth
         }
     }
 }
