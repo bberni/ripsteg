@@ -9,14 +9,14 @@ pub struct Header{
 #[derive(Debug)]
 pub struct DIB {
     dib_size: u32,
-    width:u16,
-    height:u16,
-    planes:u16,
-    bits_per_pixel:u16
+    width: u16,
+    height: u16,
+    planes: u16,
+    bits_per_pixel: u16
 }
 #[derive(Debug)]
 pub struct Bmp {
     header: Header,
-    dib_header:DIB,
+    dib_header: DIB,
 
 }
