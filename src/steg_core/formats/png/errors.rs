@@ -57,7 +57,10 @@ pub enum DumpError {
     InvalidDimensions(),
 
     #[error(r#"[-] Empty IDAT chunk"#)]
-    EmptyIDAT()
+    EmptyIDAT(),
+
+    #[error(r#"[-] Invalid filter <placeholder>"#)]
+    InvalidFilter()
 }   
 
 #[derive(Error, Debug)]

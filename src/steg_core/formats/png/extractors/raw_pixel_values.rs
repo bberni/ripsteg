@@ -1,9 +1,9 @@
 use std::{fs::File, io::Write};
-use png::filter;
 use crate::{
     steg_core::formats::png::{
         errors::{DumpError, GenericError, FsError},
-        parser::{Png, IHDR}
+        parser::{Png, IHDR},
+        utils::filter::{unfilter, FilterType, BytesPerPixel}
     },
     yes_no, OUTPUT_DIR,
 };
@@ -99,8 +99,25 @@ fn paeth_filter(prev_scanline: &Vec<u8>, scanline: &[u8], bpp: &u8) -> Result<Ve
     return Ok(unfiltered);
 }
 
+// fn chunk_idat_mut(vec: &mut Vec<u8>, chunk_size: usize) -> Vec<(u8, &mut [u8])> {
+//     let mut chunks = Vec::new();
+//     let vec_clone = vec.clone();
+//     let mut start = 0;
+//     while start < vec.len() {
+//         let end = std::cmp::min(start + chunk_size, vec.len());
+//         if end - start > 0 {
+//             let filter_type = vec[start];
+//             let scanline = &mut vec[start + 1..end];  // start from the next byte
+//             chunks.push((filter_type, scanline));
+//         }
+//         start = end;
+//     }
+
+//     return chunks;
+// }
+
 pub fn raw_pixel_values(png: Png, idat_dump: Vec<u8>) -> Result<Vec<u8>> {
-    let idat = idat_dump;
+    let mut idat = idat_dump;
     println!("{:?}", png.ihdr);
     let bytes_per_pixel: u32 = match png.ihdr.color_type {
         0 => 1,
@@ -134,13 +151,13 @@ pub fn raw_pixel_values(png: Png, idat_dump: Vec<u8>) -> Result<Vec<u8>> {
         }
     }
     let total_width = width as usize * bytes_per_pixel as usize + 1;
-    let scanlines: Vec<&[u8]> = idat.as_slice().chunks(total_width).collect();
+    let mut scanlines: Vec<&mut [u8]>= idat.as_mut_slice().chunks_mut(total_width).collect();
     // println!("{:?}", scanlines);
-    let check = match scanlines.last() {
+    let last_scanline_check = match scanlines.last() {
         Some(len) => len,
         None => return Err(DumpError::EmptyIDAT().into()),
     };
-    if check.len() != total_width {
+    if last_scanline_check.len() != total_width {
         println!(r#"[!] Invalid dimensions error:
     The IDAT scanlines are incorrectly aligned (length of the last scanline is too small)
     This will probably cause corruption of raw bytes of image (filters will be incorrect)
@@ -149,33 +166,46 @@ pub fn raw_pixel_values(png: Png, idat_dump: Vec<u8>) -> Result<Vec<u8>> {
         if !(yes_no()?) {return Err(DumpError::InvalidDimensions().into())};
     }
     let empty_scanline = vec![0 as u8; total_width];
-    let mut raw_pixel_values: Vec<Vec<u8>> = Vec::new();
-    for (index, scanline) in scanlines.iter().enumerate() {
+    let bpp = match BytesPerPixel::from_u8(bpp) {
+        Some(t) => t,
+        None => return Err(DumpError::InvalidFilter().into())
+    };
+    let mut unfiltered: Vec<&[u8]> = Vec::new();
+  // let mut raw_pixel_values: Vec<Vec<u8>> = Vec::new();
+    for (index, scanline) in scanlines.iter_mut().enumerate() {
         let prev_scanline = match index {
-            0 => &empty_scanline,
-            _ => raw_pixel_values.last().unwrap() // if index > 1, this cannot fail
+            0 => empty_scanline.as_slice(),
+            _ => unfiltered.last().unwrap()
         };
-        let filter_type = scanline[0];
-        let scanline_no_filter = &scanline[1..];
-        // match filter_type {
-        //     1 => {println!("sub")}
-        //     2 => {println!("up")}
-        //     3 => {println!("avg")}
-        //     4 => {println!("paeth")}
-        //     _ => {}// temp
-        // }
-        println!("{:?}", bpp);
-        let raw_scanline = match filter_type {
-            0 => none_filter(scanline_no_filter),
-            1 => sub_filter(scanline_no_filter, &bpp)?,
-            2 => up_filter(prev_scanline, scanline_no_filter),
-            3 => average_filter(prev_scanline, scanline_no_filter, &bpp),
-            4 => paeth_filter(prev_scanline, scanline_no_filter, &bpp)?,
-            _ => Vec::new() // temp
+        let filter_type = match FilterType::from_u8(scanline[0]) {
+            Some(t) => t,
+            None => return Err(DumpError::InvalidFilter().into())
         };
-        raw_pixel_values.push(raw_scanline);
+        unfilter(filter_type, &bpp, prev_scanline, &mut scanline[1..]);
+        unfiltered.push(&scanline[1..]);
+
     }
-    let raw_pixel_values = raw_pixel_values.concat();
+    //     let filter_type = scanline[0];
+    //     let scanline_no_filter = &scanline[1..];
+    //     // match filter_type {
+    //     //     1 => {println!("sub")}
+    //     //     2 => {println!("up")}
+    //     //     3 => {println!("avg")}
+    //     //     4 => {println!("paeth")}
+    //     //     _ => {}// temp
+    //     // }
+    //     println!("{:?}", bpp);
+    //     let raw_scanline = match filter_type {
+    //         0 => none_filter(scanline_no_filter),
+    //         1 => sub_filter(scanline_no_filter, &bpp)?,
+    //         2 => up_filter(prev_scanline, scanline_no_filter),
+    //         3 => average_filter(prev_scanline, scanline_no_filter, &bpp),
+    //         4 => paeth_filter(prev_scanline, scanline_no_filter, &bpp)?,
+    //         _ => Vec::new() // temp
+    //     };
+    //     raw_pixel_values.push(raw_scanline);
+    // }
+    let raw_pixel_values = unfiltered.concat();
     let outfile = format!("{}/raw_pixel_values.bin", OUTPUT_DIR.read().unwrap());
     let mut file = File::create(&outfile)?;
 
