@@ -41,7 +41,7 @@ pub fn xsb(mut flags: u8, raw_data: &Vec<u8>) -> Result<()> {
         let mut file = create_dir_and_file(&"xsb".to_string(), &filename)?;
         match file.write_all(&out_vec) {
             Ok(_) => { 
-                println!("[+] contents of {} significant bit extracted to {}", 8 - c, filename);
+                println!("[+] Contents of {} significant bit extracted to {}", 8 - c, filename);
 
             },
             Err(x) => return Err(FsError::WriteError(x).into())

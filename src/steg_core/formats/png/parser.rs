@@ -1,3 +1,4 @@
+use std::fmt;
 use anyhow::Result;
 use crc32fast::Hasher;
 use super::{errors::PngError, consts::*};
@@ -12,6 +13,35 @@ pub struct IHDR {
     pub compression_method: u8,
     pub filter_method: u8,
     pub interlace_method: u8,
+}
+
+impl fmt::Display for IHDR {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let color_type = match self.color_type {
+            0 => "0 (grayscale)".to_string(),
+            2 => "2 (RGB)".to_string(),
+            3 => "3 (indexed)".to_string(),
+            4 => "4 (grayscale and alpha)".to_string(),
+            6 => "6 (RGBA)".to_string(),
+            x =>  format!("{} (invalid)", x)
+        };
+        write!(f, r#"IHDR information:
+        Width: {},
+        Height: {},
+        Bit Depth: {},
+        Color Type: {},
+        Compression Method: {},
+        Filter Method: {},
+        Interlace Method: {}"#, 
+    self.width, 
+    self.height, 
+    self.bit_depth, 
+    &color_type,
+    self.compression_method,
+    self.filter_method,
+    self.interlace_method
+)
+    }
 }
 
 #[derive(Debug)]
@@ -115,7 +145,7 @@ Do you want to continue? (Y/N) "#, chunk.chunk_name, offset - chunk.data.len() -
         }
         match ihdr {
             Some(ihdr) => {
-                println!("[+] PNG parsed successfully:\n    {:?}", ihdr);
+                println!("[+] PNG parsed successfully:\n    {}", ihdr);
                 let idat_vec: Vec<u8> = idat_vec.into_iter().flatten().collect();
                 return Ok(Png {ihdr, idat_vec, all_chunks})
             }

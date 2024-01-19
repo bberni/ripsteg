@@ -25,7 +25,6 @@ fn calculate_bpp(ihdr: &IHDR) -> Result<u8> {
 
 pub fn raw_pixel_values(png: Png, idat_dump: Vec<u8>) -> Result<Vec<u8>> {
     let mut idat = idat_dump;
-    println!("{:?}", png.ihdr);
     let bytes_per_pixel: u32 = match png.ihdr.color_type {
         0 => 1,
         2 => 3,
