@@ -1,4 +1,4 @@
-use std::{io, sync::RwLock};
+use std::{io, sync::RwLock, fs::{File, self}};
 use anyhow::Result;
 use lazy_static::lazy_static;
 
@@ -19,4 +19,11 @@ pub fn yes_no() -> Result<bool> {
             _ => println!("Invalid input!"),
         }
     }
+}
+
+pub fn create_dir_and_file(dir: &String, filename: &String) -> Result<File> {
+    let outfile = format!("{}/{}/{}", OUTPUT_DIR.read().unwrap(), dir, filename);
+    fs::create_dir_all(format!("{}/{}", OUTPUT_DIR.read().unwrap(), dir))?;
+    let file = File::create(&outfile)?;
+    return Ok(file);
 }

@@ -1,6 +1,6 @@
 use std::{fs::{File, self}, io::Write};
 
-use crate::{OUTPUT_DIR, steg_core::formats::png::errors::FsError};
+use crate::{OUTPUT_DIR, steg_core::formats::png::errors::FsError, create_dir_and_file};
 use anyhow::Result;
 
 pub fn xsb(mut flags: u8, raw_data: &Vec<u8>) -> Result<()> {
@@ -33,12 +33,15 @@ pub fn xsb(mut flags: u8, raw_data: &Vec<u8>) -> Result<()> {
                 }
             }
         }
-        let outfile = format!("{}/xsb/{}_significant_bit.bin", OUTPUT_DIR.read().unwrap(), 8 - c);
-        fs::create_dir_all(format!("{}/xsb", OUTPUT_DIR.read().unwrap())).unwrap();
-        let mut file = File::create(&outfile)?;
+        let filename = match c {
+            0 => "lsb.bin".to_string(),
+            8 => "msb.bin".to_string(),
+            _ => format!("{}_significant_bit.bin",  8 - c)
+        };
+        let mut file = create_dir_and_file(&"xsb".to_string(), &filename)?;
         match file.write_all(&out_vec) {
             Ok(_) => { 
-                println!("[+] contents of {} significant bit extracted to {}", 8 - c, outfile);
+                println!("[+] contents of {} significant bit extracted to {}", 8 - c, filename);
 
             },
             Err(x) => return Err(FsError::WriteError(x).into())
