@@ -35,7 +35,7 @@ pub fn xsb(mut flags: u8, raw_data: &Vec<u8>) -> Result<()> {
         }
         let filename = match c {
             0 => "lsb.bin".to_string(),
-            8 => "msb.bin".to_string(),
+            7 => "msb.bin".to_string(),
             _ => format!("{}_significant_bit.bin",  8 - c)
         };
         let mut file = create_dir_and_file(&"xsb".to_string(), &filename)?;
