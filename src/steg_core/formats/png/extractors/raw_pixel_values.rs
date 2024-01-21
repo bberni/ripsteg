@@ -3,7 +3,8 @@ use crate::{
     steg_core::formats::png::{
         errors::{DumpError, GenericError, FsError},
         parser::{Png, IHDR},
-        utils::filter::{unfilter, FilterType, BytesPerPixel}
+        utils::filter::{unfilter, FilterType, BytesPerPixel},
+        extractors::idat_excess_data::idat_excess_data
     },
     yes_no, OUTPUT_DIR,
 };
@@ -38,8 +39,8 @@ pub fn raw_pixel_values(png: Png, idat_dump: Vec<u8>) -> Result<Vec<u8>> {
     let bpp = calculate_bpp(&png.ihdr)?;
     let width = png.ihdr.width;
     let height = png.ihdr.height;
-    let correct_idat_size = width * bytes_per_pixel * height + height;
-    match correct_idat_size as usize == idat.len() {
+    let correct_idat_size = (width * bytes_per_pixel * height + height) as usize;
+    match correct_idat_size == idat.len() {
         true => {}
         false => {
             println!(
@@ -47,13 +48,21 @@ pub fn raw_pixel_values(png: Png, idat_dump: Vec<u8>) -> Result<Vec<u8>> {
     IDAT data size: {}, does not match correct size: {}, which is calculated from width, height and color type of the image.
     That can mean that dimensions of the image are incorrect, the color type is incorrect, or there is additional data in IDAT chunk.
     It is suggested that you analyze "idat_dump.bin" before continuing.
-    Do you want to continue? (Y/N)"#,
+    Do you want to continue? (y/N)"#,
                 idat.len(),
                 correct_idat_size
             );
             if !(yes_no()?) {
                 return Err(GenericError::Abort().into());
             };
+            
+        }
+    }
+    if idat.len() > correct_idat_size {
+        idat_excess_data(&idat, correct_idat_size)?;
+        println!("[?] Do you want to \"fix\" the IDAT length? (truncate it to the correct size as per IHDR data) (y/N)");
+        if yes_no()? {
+            idat.truncate(correct_idat_size);
         }
     }
     let total_width = width as usize * bytes_per_pixel as usize + 1;
@@ -71,6 +80,7 @@ pub fn raw_pixel_values(png: Png, idat_dump: Vec<u8>) -> Result<Vec<u8>> {
     Do you want to continue anyway? (Y/n)"#);
         if !(yes_no()?) {return Err(DumpError::InvalidDimensions().into())};
     }
+
     let empty_scanline = vec![0 as u8; total_width];
     let bpp = match BytesPerPixel::from_u8(bpp) {
         Some(t) => t,
