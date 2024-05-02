@@ -1,5 +1,5 @@
 //The following code is adapted from the "png" crate - https://github.com/image-rs/image-png/, https://crates.io/crates/png
-// And is distributed with MIT license:
+// And is distributed under terms of the MIT license:
 
 // Copyright (c) 2015 nwin
 
