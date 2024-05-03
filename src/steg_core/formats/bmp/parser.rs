@@ -11,6 +11,11 @@ pub struct Header {
     pub color_depth: u16,
 }
 
+pub struct BmpData {
+    pixel_values: Vec<u8>,
+    padding_data: Vec<u8>
+}
+
 impl fmt::Display for Header {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let color_depth = match self.color_depth {
