@@ -1,12 +1,8 @@
 use std::{fs::File, io::Write};
 use crate::{
-    steg_core::formats::png::{
-        errors::{DumpError, GenericError, FsError},
-        parser::{Png, IHDR},
-        utils::filter::{unfilter, FilterType, BytesPerPixel},
-        extractors::idat_excess_data::idat_excess_data
-    },
-    yes_no, OUTPUT_DIR,
+    print_continue_anyway, steg_core::formats::png::{
+        errors::{DumpError, FsError, GenericError}, extractors::idat_excess_data::idat_excess_data, parser::{Png, IHDR}, utils::filter::{unfilter, BytesPerPixel, FilterType}
+    }, yes_no, OUTPUT_DIR
 };
 use anyhow::Result;
 
@@ -47,11 +43,11 @@ pub fn raw_pixel_values(png: Png, idat_dump: Vec<u8>) -> Result<Vec<u8>> {
                 r#"[!] IDAT data size incorrect!
     IDAT data size: {}, does not match correct size: {}, which is calculated from width, height and color type of the image.
     That can mean that dimensions of the image are incorrect, the color type is incorrect, or there is additional data in IDAT chunk.
-    It is suggested that you analyze "idat_dump.bin" before continuing.
-    Do you want to continue? (y/N)"#,
+    It is suggested that you analyze "idat_dump.bin" before continuing."#,
                 idat.len(),
                 correct_idat_size
             );
+            print_continue_anyway();
             if !(yes_no()?) {
                 return Err(GenericError::Abort().into());
             };
@@ -60,7 +56,8 @@ pub fn raw_pixel_values(png: Png, idat_dump: Vec<u8>) -> Result<Vec<u8>> {
     }
     if idat.len() > correct_idat_size {
         idat_excess_data(&idat, correct_idat_size)?;
-        println!("[?] Do you want to \"fix\" the IDAT length? (truncate it to the correct size as per IHDR data) (y/N)");
+        print!("[?] Do you want to \"fix\" the IDAT length? (truncate it to the size specified by IHDR data) (y/N) ");
+        std::io::stdout().flush().unwrap();
         if yes_no()? {
             idat.truncate(correct_idat_size);
         }
@@ -76,8 +73,8 @@ pub fn raw_pixel_values(png: Png, idat_dump: Vec<u8>) -> Result<Vec<u8>> {
         println!(r#"[!] Invalid dimensions error:
     The IDAT scanlines are incorrectly aligned (length of the last scanline is too small)
     This will probably cause corruption of raw bytes of image (filters will be incorrect)
-    You should try to fix the corrupted header first.
-    Do you want to continue anyway? (Y/n)"#);
+    You should try to fix the corrupted header first."#);
+        print_continue_anyway();
         if !(yes_no()?) {return Err(DumpError::InvalidDimensions().into())};
     }
 

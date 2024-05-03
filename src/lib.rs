@@ -1,4 +1,4 @@
-use std::{io, sync::RwLock, fs::{File, self}};
+use std::{fs::{self, File}, io::{self, Write}, sync::RwLock};
 use anyhow::Result;
 use lazy_static::lazy_static;
 
@@ -19,6 +19,15 @@ pub fn yes_no() -> Result<bool> {
             _ => println!("Invalid input!"),
         }
     }
+}
+
+fn print_continue() -> () {
+    print!("Do you want to continue? (Y/N) ");
+    io::stdout().flush().unwrap();
+}
+fn print_continue_anyway() -> () {
+    print!("Do you want to continue anyway? (Y/N) ");
+    io::stdout().flush().unwrap();
 }
 
 pub fn create_dir_and_file(dir: &String, filename: &String) -> Result<File> {

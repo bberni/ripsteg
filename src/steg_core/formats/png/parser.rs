@@ -2,7 +2,7 @@ use std::fmt;
 use anyhow::Result;
 use crc32fast::Hasher;
 use super::{errors::PngError, consts::*};
-use crate::yes_no;
+use crate::{print_continue, print_continue_anyway, yes_no};
 
 #[derive(Debug)]
 pub struct IHDR {
@@ -78,8 +78,8 @@ impl Png {
         if correct_crc == chunk.crc32 {
             return Ok(());
         } else {
-            println!(r#"[!] Incorrect CRC32 checksum of {} chunk at offset {}: 0x{:08X} (should be 0x{:08X})
-Do you want to continue? (Y/N) "#, chunk.chunk_name, offset - chunk.data.len() - 8, chunk.crc32, correct_crc);
+            println!(r#"[!] Incorrect CRC32 checksum of {} chunk at offset {}: 0x{:08X} (should be 0x{:08X})"#, chunk.chunk_name, offset - chunk.data.len() - 8, chunk.crc32, correct_crc);
+            print_continue_anyway();
             if !(yes_no()?) {return Err(PngError::CRC32Error(chunk.chunk_name.clone(), offset - chunk.data.len() - 8).into())} else {return Ok(())};
         }
     }
@@ -91,7 +91,7 @@ Do you want to continue? (Y/N) "#, chunk.chunk_name, offset - chunk.data.len() -
         let mut all_chunks: Vec<Chunk> = Vec::new();
         if !(buffer[0..8] == VALID_PNG_SIGNATURE) {
             println!("[-] Invalid PNG file signature. There is a significant chance that the file is not in PNG format / is corrupted");
-            print!("Do you want to proceed anyway? (Y/N) ");
+            print_continue_anyway();
             if !(yes_no()?) {return Err(PngError::SigError().into())}; 
         }
         let mut cursor = 8;

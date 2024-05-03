@@ -1,0 +1,1 @@
+pub const VALID_BMP_SIGNATURE: [u8; 2] = [0x42, 0x4D];
