@@ -1,5 +1,5 @@
 use thiserror::Error;
-
+use std::io::Error;
 #[derive(Debug, Error)]
 pub enum BmpError {
     #[error("[-] BMP signature error.")]

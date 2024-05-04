@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use crate::{create_dir_and_file, steg_core::formats::png::errors::FsError};
+use crate::{create_dir_and_file, steg_core::common::errors::FsError};
 use anyhow::Result;
 
 pub fn xsb(mut flags: u8, raw_data: &Vec<u8>) -> Result<()> {

@@ -63,12 +63,6 @@ pub enum DumpError {
     InvalidFilter()
 }   
 
-#[derive(Error, Debug)]
-pub enum FsError {
-    #[error(r#"[-] Write error: 
-    {0}"#)]
-    WriteError(Error)
-}
 
 #[derive(Error, Debug)]
 pub enum GenericError {

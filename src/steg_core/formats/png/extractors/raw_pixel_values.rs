@@ -1,11 +1,18 @@
-use std::{fs::File, io::Write};
 use crate::{
-    print_continue_anyway, steg_core::formats::png::{
-        errors::{DumpError, FsError, GenericError}, extractors::idat_excess_data::idat_excess_data, parser::{Png, IHDR}, utils::filter::{unfilter, BytesPerPixel, FilterType}
-    }, yes_no, OUTPUT_DIR
+    print_continue_anyway,
+    steg_core::{
+        common::errors::FsError,
+        formats::png::{
+            errors::{DumpError, GenericError},
+            extractors::idat_excess_data::idat_excess_data,
+            parser::{Png, IHDR},
+            utils::filter::{unfilter, BytesPerPixel, FilterType},
+        },
+    },
+    yes_no, OUTPUT_DIR,
 };
 use anyhow::Result;
-
+use std::{fs::File, io::Write};
 
 fn calculate_bpp(ihdr: &IHDR) -> Result<u8> {
     let channels = match ihdr.color_type {
@@ -51,7 +58,6 @@ pub fn raw_pixel_values(png: Png, idat_dump: Vec<u8>) -> Result<Vec<u8>> {
             if !(yes_no()?) {
                 return Err(GenericError::Abort().into());
             };
-            
         }
     }
     if idat.len() > correct_idat_size {
@@ -63,40 +69,43 @@ pub fn raw_pixel_values(png: Png, idat_dump: Vec<u8>) -> Result<Vec<u8>> {
         }
     }
     let total_width = width as usize * bytes_per_pixel as usize + 1;
-    let mut scanlines: Vec<&mut [u8]>= idat.as_mut_slice().chunks_mut(total_width).collect();
+    let mut scanlines: Vec<&mut [u8]> = idat.as_mut_slice().chunks_mut(total_width).collect();
     // println!("{:?}", scanlines);
     let last_scanline_check = match scanlines.last() {
         Some(len) => len,
         None => return Err(DumpError::EmptyIDAT().into()),
     };
     if last_scanline_check.len() != total_width {
-        println!(r#"[!] Invalid dimensions error:
+        println!(
+            r#"[!] Invalid dimensions error:
     The IDAT scanlines are incorrectly aligned (length of the last scanline is too small)
     This will probably cause corruption of raw bytes of image (filters will be incorrect)
-    You should try to fix the corrupted header first."#);
+    You should try to fix the corrupted header first."#
+        );
         print_continue_anyway();
-        if !(yes_no()?) {return Err(DumpError::InvalidDimensions().into())};
+        if !(yes_no()?) {
+            return Err(DumpError::InvalidDimensions().into());
+        };
     }
 
     let empty_scanline = vec![0 as u8; total_width];
     let bpp = match BytesPerPixel::from_u8(bpp) {
         Some(t) => t,
-        None => return Err(DumpError::InvalidFilter().into())
+        None => return Err(DumpError::InvalidFilter().into()),
     };
     let mut unfiltered: Vec<&[u8]> = Vec::new();
-  // let mut raw_pixel_values: Vec<Vec<u8>> = Vec::new();
+    // let mut raw_pixel_values: Vec<Vec<u8>> = Vec::new();
     for (index, scanline) in scanlines.iter_mut().enumerate() {
         let prev_scanline = match index {
             0 => empty_scanline.as_slice(),
-            _ => unfiltered.last().unwrap()
+            _ => unfiltered.last().unwrap(),
         };
         let filter_type = match FilterType::from_u8(scanline[0]) {
             Some(t) => t,
-            None => return Err(DumpError::InvalidFilter().into())
+            None => return Err(DumpError::InvalidFilter().into()),
         };
         unfilter(filter_type, &bpp, prev_scanline, &mut scanline[1..]);
         unfiltered.push(&scanline[1..]);
-
     }
 
     let raw_pixel_values = unfiltered.concat();
@@ -104,10 +113,10 @@ pub fn raw_pixel_values(png: Png, idat_dump: Vec<u8>) -> Result<Vec<u8>> {
     let mut file = File::create(&outfile)?;
 
     match file.write_all(&raw_pixel_values) {
-        Ok(_) => { 
+        Ok(_) => {
             println!("[+] Raw pixel values dumped to {}", outfile);
-            return Ok(raw_pixel_values)
-        },
-        Err(x) => return Err(FsError::WriteError(x).into())
+            return Ok(raw_pixel_values);
+        }
+        Err(x) => return Err(FsError::WriteError(x).into()),
     };
 }

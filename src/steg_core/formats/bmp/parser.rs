@@ -12,8 +12,8 @@ pub struct Header {
 }
 
 pub struct BmpData {
-    pixel_values: Vec<u8>,
-    padding_data: Vec<u8>
+    pub pixel_data: Vec<u8>,
+    pub padding_data: Vec<u8>
 }
 
 impl fmt::Display for Header {

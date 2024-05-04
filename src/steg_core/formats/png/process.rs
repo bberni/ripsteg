@@ -1,9 +1,11 @@
-use std::{fs::File, io::Read};
+use crate::steg_core::{
+    common::extractors::xsb::xsb,
+    formats::png::{
+        extractors::raw_pixel_values::raw_pixel_values, idat_dump::idat_dump, parser::Png,
+    },
+};
 use anyhow::Result;
-use crate::steg_core::formats::png::idat_dump::idat_dump;
-
-use super::{parser::Png, extractors::{raw_pixel_values::raw_pixel_values, xsb::xsb}};
-
+use std::{fs::File, io::Read};
 
 pub fn process_png(filename: String) -> Result<()> {
     let mut f = File::open(filename)?;
